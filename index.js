@@ -63,7 +63,7 @@ webServer.delete("/activityInfo/:id", async (req, res) => {
 webServer.put("/activityInfo", async (req, res) => {
   console.log(req.body);
   const item = req.body;
-  const id = req.body.id;
+  const id = req.body._id;
 
   const missingFields = await checkMissingFields(item, requiredFields);
 
