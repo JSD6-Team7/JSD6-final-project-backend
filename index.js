@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import databaseClient from "./database.mjs";
 import { ObjectId } from "mongodb";
 import { checkMissingFields } from "./checkMissingFields.js";
+import bcrypt from "bcrypt";
 
 const corsOptions = {
   origin: "http://localhost:5173",
@@ -13,13 +14,15 @@ const corsOptions = {
 
 const HOSTNAME = process.env.SERVER_IP;
 const PORT = process.env.SERVER_PORT;
+const SALT = 10;
+
 dotenv.config();
 
 const webServer = express();
 webServer.use(cors());
 webServer.use(express.json());
 
-const requiredFields = ["activityType", "hourGoal", "minuteGoal", "date"];
+const ACTIVITY_KEYS = ["activityType", "hourGoal", "minuteGoal", "date"];
 
 webServer.get("/activityInfo", async (req, res) => {
   const activityInfo = await databaseClient
@@ -34,7 +37,7 @@ webServer.post("/activityInfo", async (req, res) => {
   const newActivityItem = req.body;
   const missingFields = await checkMissingFields(
     newActivityItem,
-    requiredFields
+    ACTIVITY_KEYS
   );
 
   if (missingFields.length > 0) {
@@ -65,7 +68,7 @@ webServer.put("/activityInfo", async (req, res) => {
   const item = req.body;
   const id = req.body._id;
 
-  const missingFields = await checkMissingFields(item, requiredFields);
+  const missingFields = await checkMissingFields(item, ACTIVITY_KEYS);
 
   if (missingFields.length > 0) {
     return res.status(400).json({
@@ -86,6 +89,8 @@ webServer.put("/activityInfo", async (req, res) => {
   } else {
     updateItem = item;
   }
+  delete updateItem._id;
+  console.log(updateItem);
   await databaseClient
     .db()
     .collection("activityInfo")
