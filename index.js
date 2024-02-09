@@ -7,7 +7,7 @@ import { checkMissingFields } from "./checkMissingFields.js";
 import bcrypt from "bcrypt";
 
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: "http://localhost:8000",
   methods: "GET,POST,DELETE,PUT",
   allowedHeaders: "Content-Type,Authorization",
 };
@@ -29,6 +29,23 @@ webServer.get("/activityInfo", async (req, res) => {
     .db()
     .collection("activityInfo")
     .find({})
+    .toArray();
+  res.json(activityInfo);
+});
+
+webServer.get("/activityInfoChart", async (req, res) => {
+  const activityInfo = await databaseClient
+    .db()
+    .collection("activityInfo")
+    .aggregate([ 
+      { $group: 
+      { 
+         _id: "$activityType", 
+
+         total_duration: { $sum: "$actualTime" } 
+      } 
+      } 
+      ])
     .toArray();
   res.json(activityInfo);
 });
