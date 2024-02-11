@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import databaseClient from "./database.mjs";
 import { ObjectId } from "mongodb";
 import { checkMissingFields } from "./checkMissingFields.js";
-
+import bcrypt from "bcrypt";
 const corsOptions = {
   origin: "http://localhost:8000",
   methods: "GET,POST,DELETE,PUT",
@@ -18,8 +18,33 @@ dotenv.config();
 const webServer = express();
 webServer.use(cors());
 webServer.use(express.json());
-
+const SALT = 10;
 const requiredFields = ["activityType", "hourGoal", "minuteGoal", "date"];
+
+const MEMBER_DATA_KEYS = ["username", "password","phoneNumber","email",];
+const LOGIN_DATA_KEYS = ["username", "password"];
+
+webServer.post("/signup", async (req, res) => {
+  let body = req.body;
+  const missingFields = await checkMissingFields(
+    body,
+    MEMBER_DATA_KEYS
+  );
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      message: "Validation failed. The following fields are missing values:",
+      missingFields: missingFields,
+    });
+  }
+
+  const saltRound = await bcrypt.genSalt(SALT);
+  body["password"] = await bcrypt.hash(body["password"], saltRound);
+
+  await databaseClient.db().collection("members").insertOne(body);
+  res.send("Create User Successfully");
+});
+
 
 webServer.get("/activityInfo", async (req, res) => {
   const activityInfo = await databaseClient
