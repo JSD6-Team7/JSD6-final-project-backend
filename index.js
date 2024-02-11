@@ -13,6 +13,8 @@ const corsOptions = {
 
 const HOSTNAME = process.env.SERVER_IP;
 const PORT = process.env.SERVER_PORT;
+const SALT = 10;
+
 dotenv.config();
 
 const webServer = express();
@@ -76,7 +78,7 @@ webServer.post("/activityInfo", async (req, res) => {
   const newActivityItem = req.body;
   const missingFields = await checkMissingFields(
     newActivityItem,
-    requiredFields
+    ACTIVITY_KEYS
   );
 
   if (missingFields.length > 0) {
@@ -107,7 +109,7 @@ webServer.put("/activityInfo", async (req, res) => {
   const item = req.body;
   const id = req.body._id;
 
-  const missingFields = await checkMissingFields(item, requiredFields);
+  const missingFields = await checkMissingFields(item, ACTIVITY_KEYS);
 
   if (missingFields.length > 0) {
     return res.status(400).json({
@@ -128,6 +130,8 @@ webServer.put("/activityInfo", async (req, res) => {
   } else {
     updateItem = item;
   }
+  delete updateItem._id;
+  console.log(updateItem);
   await databaseClient
     .db()
     .collection("activityInfo")
