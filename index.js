@@ -20,7 +20,6 @@ dotenv.config();
 const webServer = express();
 webServer.use(cors());
 webServer.use(express.json());
-const SALT = 10;
 const requiredFields = ["activityType", "hourGoal", "minuteGoal", "date"];
 
 const MEMBER_DATA_KEYS = ["username", "password","phoneNumber","email",];
