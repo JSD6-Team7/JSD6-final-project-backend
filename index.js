@@ -5,6 +5,9 @@ import databaseClient from "./database.mjs";
 import { ObjectId } from "mongodb";
 import { checkMissingFields } from "./checkMissingFields.js";
 import bcrypt from "bcrypt";
+import setTZ from "set-tz";
+setTZ("Asia/Bangkok");
+
 const corsOptions = {
   origin: "http://localhost:8000",
   methods: "GET,POST,DELETE,PUT",
@@ -20,17 +23,14 @@ dotenv.config();
 const webServer = express();
 webServer.use(cors());
 webServer.use(express.json());
-const requiredFields = ["activityType", "hourGoal", "minuteGoal", "date"];
+const ACTIVITY_KEYS = ["activityType", "hourGoal", "minuteGoal", "date"];
 
-const MEMBER_DATA_KEYS = ["username", "password","phoneNumber","email",];
+const MEMBER_DATA_KEYS = ["username", "password", "phoneNumber", "email"];
 const LOGIN_DATA_KEYS = ["username", "password"];
 
 webServer.post("/signup", async (req, res) => {
   let body = req.body;
-  const missingFields = await checkMissingFields(
-    body,
-    MEMBER_DATA_KEYS
-  );
+  const missingFields = await checkMissingFields(body, MEMBER_DATA_KEYS);
 
   if (missingFields.length > 0) {
     return res.status(400).json({
@@ -48,13 +48,10 @@ webServer.post("/signup", async (req, res) => {
 
 webServer.post("/login", async (req, res) => {
   let body = req.body;
-  const missingFields = await checkMissingFields(
-    body,
-    LOGIN_DATA_KEYS
-  );
+  const missingFields = await checkMissingFields(body, LOGIN_DATA_KEYS);
 
   if (missingFields.length > 0) {
-   res.status(400).json({
+    res.status(400).json({
       message: "Validation failed. The following fields are missing values:",
       missingFields: missingFields,
     });
@@ -71,7 +68,7 @@ webServer.post("/login", async (req, res) => {
     });
     return;
   }
-  
+
   if (!bcrypt.compareSync(body.password, user.password)) {
     res.json({
       message: "Username or Password not correct",
@@ -85,15 +82,24 @@ webServer.post("/login", async (req, res) => {
     email: user.email,
     phoneNumber: user.phoneNumber,
   };
-  res.json(returnMember );
+  res.json(returnMember);
 });
 
-webServer.get("/activityInfo", async (req, res) => {
+webServer.get("/activityInfo/:user_id", async (req, res) => {
+  const user_id = req.params.user_id;
+  let date = new Date(req.query.date);
+
+  date = date.toLocaleDateString().substring(0, 10);
+
+  date = new Date(date);
+  date.setHours(date.getHours() + 7);
+  console.log(date);
   const activityInfo = await databaseClient
     .db()
     .collection("activityInfo")
-    .find({})
+    .find({ user_id: user_id, date: date })
     .toArray();
+
   res.json(activityInfo);
 });
 
@@ -101,21 +107,30 @@ webServer.get("/activityInfoChart", async (req, res) => {
   const activityInfo = await databaseClient
     .db()
     .collection("activityInfo")
-    .aggregate([ 
-      { $group: 
-      { 
-         _id: "$activityType", 
-         
-         total_duration: { $sum: "$actualTime" } 
-      } 
-      } 
-      ])
+    .aggregate([
+      {
+        $group: {
+          _id: "$activityType",
+
+          total_duration: { $sum: "$actualTime" },
+        },
+      },
+    ])
     .toArray();
   res.json(activityInfo);
 });
 
 webServer.post("/activityInfo", async (req, res) => {
-  const newActivityItem = req.body;
+  console.log(req.body);
+  let date = new Date(req.body.date);
+
+  date = date.toLocaleDateString().substring(0, 10);
+
+  date = new Date(date);
+  date.setHours(date.getHours() + 7);
+
+  const newActivityItem = { ...req.body, date };
+
   const missingFields = await checkMissingFields(
     newActivityItem,
     ACTIVITY_KEYS
