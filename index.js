@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import databaseClient from "./database.mjs";
 import { ObjectId } from "mongodb";
 import { checkMissingFields } from "./checkMissingFields.js";
-
+import bcrypt from "bcrypt";
 const corsOptions = {
   origin: "http://localhost:8000",
   methods: "GET,POST,DELETE,PUT",
@@ -13,13 +13,40 @@ const corsOptions = {
 
 const HOSTNAME = process.env.SERVER_IP;
 const PORT = process.env.SERVER_PORT;
+const SALT = 10;
+
 dotenv.config();
 
 const webServer = express();
 webServer.use(cors());
 webServer.use(express.json());
-
+const SALT = 10;
 const requiredFields = ["activityType", "hourGoal", "minuteGoal", "date"];
+
+const MEMBER_DATA_KEYS = ["username", "password","phoneNumber","email",];
+const LOGIN_DATA_KEYS = ["username", "password"];
+
+webServer.post("/signup", async (req, res) => {
+  let body = req.body;
+  const missingFields = await checkMissingFields(
+    body,
+    MEMBER_DATA_KEYS
+  );
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      message: "Validation failed. The following fields are missing values:",
+      missingFields: missingFields,
+    });
+  }
+
+  const saltRound = await bcrypt.genSalt(SALT);
+  body["password"] = await bcrypt.hash(body["password"], saltRound);
+
+  await databaseClient.db().collection("members").insertOne(body);
+  res.send("Create User Successfully");
+});
+
 
 webServer.get("/activityInfo", async (req, res) => {
   const activityInfo = await databaseClient
@@ -51,7 +78,7 @@ webServer.post("/activityInfo", async (req, res) => {
   const newActivityItem = req.body;
   const missingFields = await checkMissingFields(
     newActivityItem,
-    requiredFields
+    ACTIVITY_KEYS
   );
 
   if (missingFields.length > 0) {
@@ -82,7 +109,7 @@ webServer.put("/activityInfo", async (req, res) => {
   const item = req.body;
   const id = req.body._id;
 
-  const missingFields = await checkMissingFields(item, requiredFields);
+  const missingFields = await checkMissingFields(item, ACTIVITY_KEYS);
 
   if (missingFields.length > 0) {
     return res.status(400).json({
@@ -103,6 +130,8 @@ webServer.put("/activityInfo", async (req, res) => {
   } else {
     updateItem = item;
   }
+  delete updateItem._id;
+  console.log(updateItem);
   await databaseClient
     .db()
     .collection("activityInfo")
