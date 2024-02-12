@@ -22,8 +22,67 @@ dotenv.config();
 const webServer = express();
 webServer.use(cors());
 webServer.use(express.json());
+const requiredFields = ["activityType", "hourGoal", "minuteGoal", "date"];
 
-const ACTIVITY_KEYS = ["activityType", "hourGoal", "minuteGoal", "date"];
+const MEMBER_DATA_KEYS = ["username", "password", "phoneNumber", "email"];
+const LOGIN_DATA_KEYS = ["username", "password"];
+
+webServer.post("/signup", async (req, res) => {
+  let body = req.body;
+  const missingFields = await checkMissingFields(body, MEMBER_DATA_KEYS);
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      message: "Validation failed. The following fields are missing values:",
+      missingFields: missingFields,
+    });
+  }
+
+  const saltRound = await bcrypt.genSalt(SALT);
+  body["password"] = await bcrypt.hash(body["password"], saltRound);
+
+  await databaseClient.db().collection("members").insertOne(body);
+  res.send("Create User Successfully");
+});
+
+webServer.post("/login", async (req, res) => {
+  let body = req.body;
+  const missingFields = await checkMissingFields(body, LOGIN_DATA_KEYS);
+
+  if (missingFields.length > 0) {
+    res.status(400).json({
+      message: "Validation failed. The following fields are missing values:",
+      missingFields: missingFields,
+    });
+    return;
+  }
+
+  const user = await databaseClient
+    .db()
+    .collection("members")
+    .findOne({ username: body.username });
+  if (user === null) {
+    res.json({
+      message: "Username or Password not correct",
+    });
+    return;
+  }
+
+  if (!bcrypt.compareSync(body.password, user.password)) {
+    res.json({
+      message: "Username or Password not correct",
+    });
+    return;
+  }
+
+  const returnMember = {
+    user_id: user._id,
+    username: user.username,
+    email: user.email,
+    phoneNumber: user.phoneNumber,
+  };
+  res.json(returnMember);
+});
 
 webServer.get("/activityInfo/:user_id", async (req, res) => {
   const dateString = req.query.date.substring(0, 10);
