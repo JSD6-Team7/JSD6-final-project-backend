@@ -38,7 +38,7 @@ webServer.get("/activityInfoChart", async (req, res) => {
       { $group: 
       { 
          _id: "$activityType", 
-
+         
          total_duration: { $sum: "$actualTime" } 
       } 
       } 
