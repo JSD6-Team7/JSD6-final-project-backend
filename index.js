@@ -7,6 +7,7 @@ import { checkMissingFields } from "./checkMissingFields.js";
 import bcrypt from "bcrypt";
 import setTZ from "set-tz";
 setTZ("Asia/Bangkok");
+
 const corsOptions = {
   origin: "http://localhost:8000",
   methods: "GET,POST,DELETE,PUT",
@@ -22,7 +23,7 @@ dotenv.config();
 const webServer = express();
 webServer.use(cors());
 webServer.use(express.json());
-const requiredFields = ["activityType", "hourGoal", "minuteGoal", "date"];
+const ACTIVITY_KEYS = ["activityType", "hourGoal", "minuteGoal", "date"];
 
 const MEMBER_DATA_KEYS = ["username", "password", "phoneNumber", "email"];
 const LOGIN_DATA_KEYS = ["username", "password"];
@@ -85,16 +86,20 @@ webServer.post("/login", async (req, res) => {
 });
 
 webServer.get("/activityInfo/:user_id", async (req, res) => {
-  const dateString = req.query.date.substring(0, 10);
-  console.log(dateString);
   const user_id = req.params.user_id;
+  let date = new Date(req.query.date);
 
+  date = date.toLocaleDateString().substring(0, 10);
+
+  date = new Date(date);
+  date.setHours(date.getHours() + 7);
+  console.log(date);
   const activityInfo = await databaseClient
     .db()
     .collection("activityInfo")
-    .find({ user_id, date: `/${dateString}/` })
+    .find({ user_id: user_id, date: date })
     .toArray();
-  console.log(activityInfo);
+
   res.json(activityInfo);
 });
 
@@ -117,7 +122,15 @@ webServer.get("/activityInfoChart", async (req, res) => {
 
 webServer.post("/activityInfo", async (req, res) => {
   console.log(req.body);
-  const newActivityItem = req.body;
+  let date = new Date(req.body.date);
+
+  date = date.toLocaleDateString().substring(0, 10);
+
+  date = new Date(date);
+  date.setHours(date.getHours() + 7);
+
+  const newActivityItem = { ...req.body, date };
+
   const missingFields = await checkMissingFields(
     newActivityItem,
     ACTIVITY_KEYS
