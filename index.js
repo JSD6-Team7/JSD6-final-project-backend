@@ -5,7 +5,8 @@ import databaseClient from "./database.mjs";
 import { ObjectId } from "mongodb";
 import { checkMissingFields } from "./checkMissingFields.js";
 import bcrypt from "bcrypt";
-
+import setTZ from "set-tz";
+setTZ("Asia/Bangkok");
 const corsOptions = {
   origin: "http://localhost:8000",
   methods: "GET,POST,DELETE,PUT",
@@ -24,12 +25,17 @@ webServer.use(express.json());
 
 const ACTIVITY_KEYS = ["activityType", "hourGoal", "minuteGoal", "date"];
 
-webServer.get("/activityInfo", async (req, res) => {
+webServer.get("/activityInfo/:user_id", async (req, res) => {
+  const dateString = req.query.date.substring(0, 10);
+  console.log(dateString);
+  const user_id = req.params.user_id;
+
   const activityInfo = await databaseClient
     .db()
     .collection("activityInfo")
-    .find({})
+    .find({ user_id, date: `/${dateString}/` })
     .toArray();
+  console.log(activityInfo);
   res.json(activityInfo);
 });
 
@@ -37,20 +43,21 @@ webServer.get("/activityInfoChart", async (req, res) => {
   const activityInfo = await databaseClient
     .db()
     .collection("activityInfo")
-    .aggregate([ 
-      { $group: 
-      { 
-         _id: "$activityType", 
+    .aggregate([
+      {
+        $group: {
+          _id: "$activityType",
 
-         total_duration: { $sum: "$actualTime" } 
-      } 
-      } 
-      ])
+          total_duration: { $sum: "$actualTime" },
+        },
+      },
+    ])
     .toArray();
   res.json(activityInfo);
 });
 
 webServer.post("/activityInfo", async (req, res) => {
+  console.log(req.body);
   const newActivityItem = req.body;
   const missingFields = await checkMissingFields(
     newActivityItem,
