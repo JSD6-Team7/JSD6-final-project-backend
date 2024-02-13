@@ -6,6 +6,7 @@ import { ObjectId } from "mongodb";
 import { checkMissingFields } from "./checkMissingFields.js";
 import bcrypt from "bcrypt";
 import setTZ from "set-tz";
+import { getISOWeek } from 'date-fns';
 setTZ("Asia/Bangkok");
 
 const corsOptions = {
@@ -103,21 +104,63 @@ webServer.get("/activityInfo/:user_id", async (req, res) => {
   res.json(activityInfo);
 });
 
-webServer.get("/activityInfoChart", async (req, res) => {
-  const activityInfo = await databaseClient
-    .db()
-    .collection("activityInfo")
-    .aggregate([
-      {
-        $group: {
-          _id: "$activityType",
-
-          total_duration: { $sum: "$actualTime" },
+webServer.get("/activityInfoChartDonut", async (req, res) => {
+  try {
+    const activityInfo = await databaseClient
+      .db()
+      .collection("activityInfo")
+      .aggregate([
+        {
+          $group: {
+            _id: "$activityType",
+            total_duration: { $sum: "$actualTime" },
+          },
         },
-      },
-    ])
-    .toArray();
-  res.json(activityInfo);
+      ])
+      .toArray();
+
+    res.json({ data: activityInfo, status: "success" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error", status: "error" });
+  }
+});
+
+
+webServer.get("/activityInfoChartBar", async (req, res) => {
+  try {
+    const requestedWeek = req.query.week || getISOWeek(new Date());
+
+    const activityInfoChartBar = await databaseClient
+      .db()
+      .collection("activityInfo")
+      .aggregate([
+        {
+          $addFields: {
+            dayOfWeek: { $dayOfWeek: "$date" },
+            weekOfYear: { $week: "$date" }
+          }
+        },
+        {
+          $match: {
+            weekOfYear: { $eq: requestedWeek-1 }
+          }
+        },
+        {
+          $group: {
+            _id: { dayOfWeek: "$dayOfWeek", weekOfYear: "$weekOfYear" },
+            totalActualTime: { $sum: "$actualTime" }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ])
+      .toArray();
+
+    res.json({ data: activityInfoChartBar, status: "success" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error", status: "error" });
+  }
 });
 
 webServer.post("/activityInfo", async (req, res) => {
