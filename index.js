@@ -7,10 +7,12 @@ import { checkMissingFields } from "./checkMissingFields.js";
 import bcrypt from "bcrypt";
 import setTZ from "set-tz";
 import { getISOWeek } from 'date-fns';
+import jwt from "jsonwebtoken";
+import jwtValidate from "./src/middlewares/jwtValidate.js";
 setTZ("Asia/Bangkok");
 
 const corsOptions = {
-  origin: "http://localhost:8000",
+  origin: "http://localhost:3000",
   methods: "GET,POST,DELETE,PUT",
   allowedHeaders: "Content-Type,Authorization",
 };
@@ -48,47 +50,77 @@ webServer.post("/signup", async (req, res) => {
 });
 
 webServer.post("/login", async (req, res) => {
-  let body = req.body;
-  const missingFields = await checkMissingFields(body, LOGIN_DATA_KEYS);
+  try {
+    let body = req.body;
+    const missingFields = await checkMissingFields(body, LOGIN_DATA_KEYS);
 
-  if (missingFields.length > 0) {
-    res.status(400).json({
-      message: "Validation failed. The following fields are missing values:",
-      missingFields: missingFields,
+    if (missingFields.length > 0) {
+      res.status(400).json({
+        message: "Validation failed. The following fields are missing values:",
+        missingFields: missingFields,
+      });
+      return;
+    }
+
+    const user = await databaseClient
+      .db()
+      .collection("members")
+      .findOne({ username: body.username });
+    if (user === null) {
+      res.json({
+        message: "Username or Password not correct",
+      });
+      return;
+    }
+
+    if (!bcrypt.compareSync(body.password, user.password)) {
+      res.json({
+        message: "Username or Password not correct",
+      });
+      return;
+    }
+
+    const returnMember = {
+      user_id: user._id,
+      username: user.username,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    };
+
+    const token = jwt.sign(returnMember, process.env.JWT_SECRET_KEY, {
+      expiresIn: "7d",
+      algorithm: "HS256",
     });
-    return;
-  }
 
-  const user = await databaseClient
-    .db()
-    .collection("members")
-    .findOne({ username: body.username });
-  if (user === null) {
-    res.json({
-      message: "Username or Password not correct",
-    });
-    return;
+    returnMember["token"] = token;
+    res.json(returnMember);
+  } catch (error) {
+    console.error("Error in login:", error);
+    res.status(500).json({ error: "Internal Server Error", status: "error" });
   }
-
-  if (!bcrypt.compareSync(body.password, user.password)) {
-    res.json({
-      message: "Username or Password not correct",
-    });
-    return;
-  }
-
-  const returnMember = {
-    user_id: user._id,
-    username: user.username,
-    email: user.email,
-    phoneNumber: user.phoneNumber,
-  };
-  res.json(returnMember);
 });
 
-webServer.get("/activityInfo/:user_id", async (req, res) => {
+
+webServer.get("/testToken", jwtValidate, async (req, res) => {
+  // try {
+  //   if (!req.headers["authorization"]) {
+  //     return res.sendStatus(401);
+  //   }
+  // const token = req.headers["authorization"].replace("Bearer ","");
+  // console.log(token);
+  // const ret = jwt.verify(token, process.env.JWT_SECRET_KEY);
+  // res.json(ret);
+  // } catch (e) {
+  //   return res.sendStatus(403);
+  // }
+  console.log("token validate passed");
+  res.send("token validate passed");
+})
+
+webServer.get("/activityInfo/:user_id", jwtValidate, async (req, res) => {
+  
   const user_id = req.params.user_id;
-  let date = new Date(req.query.date);
+  let date = new Date(new Date().toLocaleDateString());
   date.setHours(date.getHours() + 7);
   const activityInfo = await databaseClient
     .db()
@@ -158,11 +190,9 @@ webServer.get("/activityInfoChartBar", async (req, res) => {
   }
 });
 
-webServer.post("/activityInfo", async (req, res) => {
+webServer.post("/activityInfo", jwtValidate, async (req, res) => {
   let date = new Date(req.body.date).toLocaleDateString();
-
   date = new Date(date);
-
   date.setHours(date.getHours() + 7);
   console.log(date);
 
@@ -187,7 +217,7 @@ webServer.post("/activityInfo", async (req, res) => {
   res.status(201).json({ message: "Activity info was added successfully" });
 });
 
-webServer.delete("/activityInfo/:id", async (req, res) => {
+webServer.delete("/activityInfo/:id", jwtValidate, async (req, res) => {
   const id = req.params.id;
   await databaseClient
     .db()
@@ -196,7 +226,7 @@ webServer.delete("/activityInfo/:id", async (req, res) => {
   res.status(200).json({ message: "This activity was deleted successfully" });
 });
 
-webServer.put("/activityInfo", async (req, res) => {
+webServer.put("/activityInfo", jwtValidate, async (req, res) => {
   let date = new Date(req.body.date).toLocaleDateString();
   date = new Date(date);
   date.setHours(date.getHours() + 7);
