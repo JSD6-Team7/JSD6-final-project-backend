@@ -89,12 +89,7 @@ webServer.post("/login", async (req, res) => {
 webServer.get("/activityInfo/:user_id", async (req, res) => {
   const user_id = req.params.user_id;
   let date = new Date(req.query.date);
-
-  date = date.toLocaleDateString().substring(0, 10);
-
-  date = new Date(date);
   date.setHours(date.getHours() + 7);
-  console.log(date);
   const activityInfo = await databaseClient
     .db()
     .collection("activityInfo")
@@ -164,13 +159,12 @@ webServer.get("/activityInfoChartBar", async (req, res) => {
 });
 
 webServer.post("/activityInfo", async (req, res) => {
-  console.log(req.body);
-  let date = new Date(req.body.date);
-
-  date = date.toLocaleDateString().substring(0, 10);
+  let date = new Date(req.body.date).toLocaleDateString();
 
   date = new Date(date);
+
   date.setHours(date.getHours() + 7);
+  console.log(date);
 
   const newActivityItem = { ...req.body, date };
 
@@ -203,8 +197,10 @@ webServer.delete("/activityInfo/:id", async (req, res) => {
 });
 
 webServer.put("/activityInfo", async (req, res) => {
-  console.log(req.body);
-  const item = req.body;
+  let date = new Date(req.body.date).toLocaleDateString();
+  date = new Date(date);
+  date.setHours(date.getHours() + 7);
+  const item = { ...req.body, date };
   const id = req.body._id;
 
   const missingFields = await checkMissingFields(item, ACTIVITY_KEYS);
@@ -229,7 +225,6 @@ webServer.put("/activityInfo", async (req, res) => {
     updateItem = item;
   }
   delete updateItem._id;
-  console.log(updateItem);
   await databaseClient
     .db()
     .collection("activityInfo")
