@@ -6,7 +6,7 @@ import { ObjectId } from "mongodb";
 import { checkMissingFields } from "./checkMissingFields.js";
 import bcrypt from "bcrypt";
 import setTZ from "set-tz";
-import { getISOWeek } from 'date-fns';
+import { getISOWeek } from "date-fns";
 import jwt from "jsonwebtoken";
 import jwtValidate from "./src/middlewares/jwtValidate.js";
 setTZ("Asia/Bangkok");
@@ -92,6 +92,8 @@ webServer.post("/login", async (req, res) => {
       algorithm: "HS256",
     });
 
+    console.log(token);
+
     returnMember["token"] = token;
     res.json(returnMember);
   } catch (error) {
@@ -99,7 +101,6 @@ webServer.post("/login", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error", status: "error" });
   }
 });
-
 
 webServer.get("/testToken", jwtValidate, async (req, res) => {
   // try {
@@ -115,17 +116,19 @@ webServer.get("/testToken", jwtValidate, async (req, res) => {
   // }
   console.log("token validate passed");
   res.send("token validate passed");
-})
+});
 
-webServer.get("/activityInfo/:user_id", jwtValidate, async (req, res) => {
-  
-  const user_id = req.params.user_id;
-  let date = new Date(new Date().toLocaleDateString());
-  date.setHours(date.getHours() + 7);
+webServer.post("/activityInfoGetData", jwtValidate, async (req, res) => {
+  console.log(req.body.selectedDate);
+  const user_id = req.body.user_id;
+  let selectedDate = req.body.selectedDate;
+  selectedDate = new Date(selectedDate).toLocaleDateString();
+  selectedDate = new Date(selectedDate);
+  selectedDate.setHours(selectedDate.getHours() + 7);
   const activityInfo = await databaseClient
     .db()
     .collection("activityInfo")
-    .find({ user_id: user_id, date: date })
+    .find({ user_id: user_id, date: selectedDate })
     .toArray();
 
   res.json(activityInfo);
@@ -153,7 +156,6 @@ webServer.get("/activityInfoChartDonut", async (req, res) => {
   }
 });
 
-
 webServer.get("/activityInfoChartBar", async (req, res) => {
   try {
     const requestedWeek = req.query.week || getISOWeek(new Date());
@@ -165,21 +167,21 @@ webServer.get("/activityInfoChartBar", async (req, res) => {
         {
           $addFields: {
             dayOfWeek: { $dayOfWeek: "$date" },
-            weekOfYear: { $week: "$date" }
-          }
+            weekOfYear: { $week: "$date" },
+          },
         },
         {
           $match: {
-            weekOfYear: { $eq: requestedWeek-1 }
-          }
+            weekOfYear: { $eq: requestedWeek - 1 },
+          },
         },
         {
           $group: {
             _id: { dayOfWeek: "$dayOfWeek", weekOfYear: "$weekOfYear" },
-            totalActualTime: { $sum: "$actualTime" }
-          }
+            totalActualTime: { $sum: "$actualTime" },
+          },
         },
-        { $sort: { _id: 1 } }
+        { $sort: { _id: 1 } },
       ])
       .toArray();
 
