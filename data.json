@@ -1,0 +1,9 @@
+{
+  "activityName": "swim",
+  "description": "Have fun",
+  "activityType": "swimming",
+  "date": "2024-02-05T16:25:38.910Z",
+  "hourGoal": 1,
+  "minuteGoal": 30,
+  "actualTime": 1800
+}
