@@ -134,12 +134,32 @@ webServer.post("/activityInfoGetData", jwtValidate, async (req, res) => {
   res.json(activityInfo);
 });
 
-webServer.get("/activityInfoChartDonut", async (req, res) => {
+webServer.post("/activityInfoChartDonut", jwtValidate, async (req, res) => {
   try {
+    // console.log(req.body.selectedDate);
+    const user_id = req.body.user_id;
+    let selectedDate = req.body.selectedDate;
+    selectedDate = new Date(selectedDate).toLocaleDateString();
+    selectedDate = new Date(selectedDate);
+    selectedDate.setHours(selectedDate.getHours() + 7);
+    // console.log(user_id);
+    const requestedWeek = getISOWeek(selectedDate);
     const activityInfo = await databaseClient
       .db()
       .collection("activityInfo")
       .aggregate([
+        {
+          $addFields: {
+            dayOfWeek: { $dayOfWeek: "$date" },
+            weekOfYear: { $week: "$date" },
+          },
+        },
+        {
+          $match: {
+            user_id: user_id,
+            weekOfYear: { $eq: requestedWeek - 1 },
+          },
+        },
         {
           $group: {
             _id: "$activityType",
@@ -156,10 +176,16 @@ webServer.get("/activityInfoChartDonut", async (req, res) => {
   }
 });
 
-webServer.get("/activityInfoChartBar", async (req, res) => {
+webServer.post("/activityInfoChartBar", jwtValidate, async (req, res) => {
   try {
-    const requestedWeek = req.query.week || getISOWeek(new Date());
-
+    // console.log(req.body.selectedDate);
+    const user_id = req.body.user_id;
+    let selectedDate = req.body.selectedDate;
+    selectedDate = new Date(selectedDate).toLocaleDateString();
+    selectedDate = new Date(selectedDate);
+    selectedDate.setHours(selectedDate.getHours() + 7);
+    // console.log(user_id);
+    const requestedWeek = getISOWeek(selectedDate);
     const activityInfoChartBar = await databaseClient
       .db()
       .collection("activityInfo")
@@ -172,6 +198,7 @@ webServer.get("/activityInfoChartBar", async (req, res) => {
         },
         {
           $match: {
+            user_id: user_id,
             weekOfYear: { $eq: requestedWeek - 1 },
           },
         },
