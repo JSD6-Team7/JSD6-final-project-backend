@@ -27,6 +27,7 @@ const webServer = express();
 webServer.use(cors());
 webServer.use(express.json());
 const ACTIVITY_KEYS = ["activityType", "hourGoal", "minuteGoal", "date"];
+const TUTORIAL_KEYS = ["label", "video", "descriptions"];
 
 const MEMBER_DATA_KEYS = ["username", "password", "phoneNumber", "email"];
 const LOGIN_DATA_KEYS = ["username", "password"];
@@ -289,6 +290,69 @@ webServer.put("/activityInfo", jwtValidate, async (req, res) => {
     .collection("activityInfo")
     .updateOne({ _id: new ObjectId(id) }, { $set: updateItem });
   res.status(200).json({ message: "This activity was updated successfully" });
+});
+
+webServer.post("/tutorialsCreateData", jwtValidate, async (req, res) => {
+  const newTutorialItem = req.body;
+
+  const missingFields = await checkMissingFields(
+    newTutorialItem,
+    TUTORIAL_KEYS
+  );
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      message: "Validation failed. The following fields are missing values:",
+      missingFields: missingFields,
+    });
+  }
+
+  await databaseClient
+    .db()
+    .collection("tutorials")
+    .insertOne(newTutorialItem);
+  res.status(201).json({ message: "The video info was added successfully" });
+});
+
+webServer.post("/tutorialsGetData", async (req, res) => {
+  const user_id = req.body.user_id;
+  const videoInfo = await databaseClient
+    .db()
+    .collection("tutorials")
+    .find({ user_id: user_id })
+    .toArray();
+
+  res.json(videoInfo);
+});
+
+webServer.delete("/tutorials/:id", async (req, res) => {
+  const id = req.params.id;
+  await databaseClient
+    .db()
+    .collection("tutorials")
+    .deleteOne({ _id: new ObjectId(id) });
+  res.status(200).json({ message: "This video was deleted successfully" });
+});
+
+webServer.put("/tutorials", async (req, res) => {
+  const item = req.body;
+  const id = req.body._id;
+
+  const missingFields = await checkMissingFields(item, TUTORIAL_KEYS);
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      message: "Validation failed. The following fields are missing values:",
+      missingFields: missingFields,
+    });
+  }
+
+  delete item._id;
+  await databaseClient
+    .db()
+    .collection("tutorials")
+    .updateOne({ _id: new ObjectId(id) }, { $set: item });
+  res.status(200).json({ message: "This video was updated successfully" });
 });
 
 const currentServer = webServer.listen(PORT, HOSTNAME, () => {
