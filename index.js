@@ -355,6 +355,163 @@ webServer.put("/tutorials", async (req, res) => {
   res.status(200).json({ message: "This video was updated successfully" });
 });
 
+// add kane path get 'http://localhost:3000/users/1';
+// add kane path put 'http://localhost:3000/users/editemail'
+// add kane path put 'http://localhost:3000/users/editpassword'
+// add kane path get 'http://localhost:3000/member/1'
+// add kane path put 'http://localhost:3000/users/update'
+
+webServer.get("/users/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  // const id = req.params.id;
+  const user = await databaseClient
+    .db()
+    .collection("members")
+    // .findOne({ _id: new ObjectId(id) });
+    .findOne({ id: id });
+
+  res.status(200).send({
+    status: "ok",
+    user: user,
+  });
+});
+
+webServer.put("/users/editemail", async (req, res) => {
+  const user = req.body;
+  const id = parseInt(user.id);
+  // const id = user.id;
+  const fieldsToUpdate = {};
+
+  // ตรวจสอบว่ามีการส่งค่า lname มาหรือไม่
+  if (user.email) {
+    fieldsToUpdate.email = user.email;
+  }
+
+  // กำหนดตัวเลือกการอัปเดต
+  const updateOptions = {
+    $set: fieldsToUpdate,
+  };
+
+  // เรียกใช้ `updateOne`
+  await databaseClient
+    .db()
+    .collection("members")
+    // .updateOne({ _id: new ObjectId(id) }, updateOptions);
+    .updateOne({ id: id }, updateOptions);
+
+  // ส่งข้อความตอบกลับ
+  res.status(200).send({
+    status: "ok",
+    message: "User with ID = " + id + " is updated",
+    user: user,
+  });
+});
+
+webServer.put("/users/editpassword", async (req, res) => {
+  const user = req.body;
+  const id = parseInt(user.id);
+  // const id = user.id;
+  const fieldsToUpdate = {};
+
+  // ตรวจสอบว่ามีการส่งค่า lname มาหรือไม่
+  if (user.password) {
+    fieldsToUpdate.password = user.password;
+  }
+
+  // กำหนดตัวเลือกการอัปเดต
+  const updateOptions = {
+    $set: fieldsToUpdate,
+  };
+
+  // เรียกใช้ `updateOne`
+  await databaseClient
+    .db()
+    .collection("members")
+    // .updateOne({ _id: new ObjectId(id) }, updateOptions);
+    .updateOne({ id: id }, updateOptions);
+
+  // ส่งข้อความตอบกลับ
+  res.status(200).send({
+    status: "ok",
+    message: "User with ID = " + id + " is updated",
+    user: user,
+  });
+});
+
+webServer.get("/member/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  // const id = req.params.id;
+  const user = await databaseClient
+    .db()
+    .collection("members")
+    // .findOne({ _id: new ObjectId(id) });
+    .findOne({ id: id });
+
+  res.status(200).send({
+    status: "ok",
+    user: user,
+  });
+});
+
+webServer.put("/users/update", async (req, res) => {
+  const user = req.body;
+  const id = parseInt(user.id);
+  // const id = user.id;
+
+  const fieldsToUpdate = {};
+
+  // ตรวจสอบว่ามีการส่งค่า fname มาหรือไม่
+  if (user.username) {
+    fieldsToUpdate.username = user.username;
+  }
+
+  // ตรวจสอบว่ามีการส่งค่า lname มาหรือไม่
+  if (user.birthday) {
+    fieldsToUpdate.birthday = user.birthday;
+  }
+
+  if (user.gender) {
+    fieldsToUpdate.gender = user.gender;
+  }
+
+  if (user.email) {
+    fieldsToUpdate.email = user.email;
+  }
+
+  if (user.weight) {
+    fieldsToUpdate.weight = user.weight;
+  }
+
+  if (user.height) {
+    fieldsToUpdate.height = user.height;
+  }
+
+  if (user.avatar) {
+    fieldsToUpdate.avatar = user.avatar;
+  }
+
+  // ... ตรวจสอบค่าอื่น ๆ ที่ต้องการอัปเดต ...
+
+  // กำหนดตัวเลือกการอัปเดต
+  const updateOptions = {
+    $set: fieldsToUpdate,
+  };
+
+  // เรียกใช้ `updateOne`
+  await databaseClient
+    .db()
+    .collection("members")
+    // .updateOne({ _id: new ObjectId(id) }, updateOptions);
+    .updateOne({ id: id }, updateOptions);
+
+  // ส่งข้อความตอบกลับ
+  res.status(200).send({
+    status: "ok",
+    message: "User with ID = " + id + " is updated",
+    user: user,
+  });
+});
+
 const currentServer = webServer.listen(PORT, HOSTNAME, () => {
   console.log(`SERVER IS ONLINE => http://${HOSTNAME}:${PORT}`);
   console.log(
