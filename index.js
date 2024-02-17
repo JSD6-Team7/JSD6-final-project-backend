@@ -31,6 +31,7 @@ const TUTORIAL_KEYS = ["label", "video", "descriptions"];
 
 const MEMBER_DATA_KEYS = ["username", "password", "phoneNumber", "email"];
 const LOGIN_DATA_KEYS = ["username", "password"];
+const USERS_KEYS = ["username", "birthday", "weight", "height"];
 
 webServer.post("/signup", async (req, res) => {
   let body = req.body;
@@ -307,10 +308,7 @@ webServer.post("/tutorialsCreateData", jwtValidate, async (req, res) => {
     });
   }
 
-  await databaseClient
-    .db()
-    .collection("tutorials")
-    .insertOne(newTutorialItem);
+  await databaseClient.db().collection("tutorials").insertOne(newTutorialItem);
   res.status(201).json({ message: "The video info was added successfully" });
 });
 
@@ -325,7 +323,7 @@ webServer.post("/tutorialsGetData", async (req, res) => {
   res.json(videoInfo);
 });
 
-webServer.delete("/tutorials/:id", async (req, res) => {
+webServer.delete("/tutorialsDeleteData/:id", async (req, res) => {
   const id = req.params.id;
   await databaseClient
     .db()
@@ -334,7 +332,7 @@ webServer.delete("/tutorials/:id", async (req, res) => {
   res.status(200).json({ message: "This video was deleted successfully" });
 });
 
-webServer.put("/tutorials", async (req, res) => {
+webServer.put("/tutorialsUpdateData", async (req, res) => {
   const item = req.body;
   const id = req.body._id;
 
@@ -362,14 +360,12 @@ webServer.put("/tutorials", async (req, res) => {
 // add kane path put 'http://localhost:3000/users/update'
 
 webServer.get("/users/:id", async (req, res) => {
-  const id = parseInt(req.params.id);
-  // const id = req.params.id;
+  const id = req.params.id;
+
   const user = await databaseClient
     .db()
     .collection("members")
-    // .findOne({ _id: new ObjectId(id) });
-    .findOne({ id: id });
-
+    .findOne({ _id: new ObjectId(id) });
   res.status(200).send({
     status: "ok",
     user: user,
@@ -378,26 +374,19 @@ webServer.get("/users/:id", async (req, res) => {
 
 webServer.put("/users/editemail", async (req, res) => {
   const user = req.body;
-  const id = parseInt(user.id);
-  // const id = user.id;
-  const fieldsToUpdate = {};
+  const id = user.id;
 
-  // ตรวจสอบว่ามีการส่งค่า lname มาหรือไม่
-  if (user.email) {
-    fieldsToUpdate.email = user.email;
+  // ตรวจสอบว่ามีการส่งค่า email มาหรือไม่
+  if (!user.email) {
+    return res.json({ message: "Validation failed. Please input email!" });
   }
 
-  // กำหนดตัวเลือกการอัปเดต
-  const updateOptions = {
-    $set: fieldsToUpdate,
-  };
-
+  delete user.id;
   // เรียกใช้ `updateOne`
   await databaseClient
     .db()
     .collection("members")
-    // .updateOne({ _id: new ObjectId(id) }, updateOptions);
-    .updateOne({ id: id }, updateOptions);
+    .updateOne({ _id: new ObjectId(id) }, { $set: user });
 
   // ส่งข้อความตอบกลับ
   res.status(200).send({
@@ -409,26 +398,22 @@ webServer.put("/users/editemail", async (req, res) => {
 
 webServer.put("/users/editpassword", async (req, res) => {
   const user = req.body;
-  const id = parseInt(user.id);
-  // const id = user.id;
-  const fieldsToUpdate = {};
+  const id = user.id;
 
   // ตรวจสอบว่ามีการส่งค่า lname มาหรือไม่
-  if (user.password) {
-    fieldsToUpdate.password = user.password;
+  if (!user.password) {
+    return res.json({ message: "Validation failed. Please input password!" });
   }
 
-  // กำหนดตัวเลือกการอัปเดต
-  const updateOptions = {
-    $set: fieldsToUpdate,
-  };
+  const saltRound = await bcrypt.genSalt(SALT);
+  user["password"] = await bcrypt.hash(user["password"], saltRound);
 
+  delete user.id;
   // เรียกใช้ `updateOne`
   await databaseClient
     .db()
     .collection("members")
-    // .updateOne({ _id: new ObjectId(id) }, updateOptions);
-    .updateOne({ id: id }, updateOptions);
+    .updateOne({ _id: new ObjectId(id) }, { $set: user });
 
   // ส่งข้อความตอบกลับ
   res.status(200).send({
@@ -438,25 +423,9 @@ webServer.put("/users/editpassword", async (req, res) => {
   });
 });
 
-webServer.get("/member/:id", async (req, res) => {
-  const id = parseInt(req.params.id);
-  // const id = req.params.id;
-  const user = await databaseClient
-    .db()
-    .collection("members")
-    // .findOne({ _id: new ObjectId(id) });
-    .findOne({ id: id });
-
-  res.status(200).send({
-    status: "ok",
-    user: user,
-  });
-});
-
 webServer.put("/users/update", async (req, res) => {
   const user = req.body;
-  const id = parseInt(user.id);
-  // const id = user.id;
+  const id = user.id;
 
   const fieldsToUpdate = {};
 
@@ -474,10 +443,6 @@ webServer.put("/users/update", async (req, res) => {
     fieldsToUpdate.gender = user.gender;
   }
 
-  if (user.email) {
-    fieldsToUpdate.email = user.email;
-  }
-
   if (user.weight) {
     fieldsToUpdate.weight = user.weight;
   }
@@ -490,9 +455,6 @@ webServer.put("/users/update", async (req, res) => {
     fieldsToUpdate.avatar = user.avatar;
   }
 
-  // ... ตรวจสอบค่าอื่น ๆ ที่ต้องการอัปเดต ...
-
-  // กำหนดตัวเลือกการอัปเดต
   const updateOptions = {
     $set: fieldsToUpdate,
   };
@@ -501,8 +463,7 @@ webServer.put("/users/update", async (req, res) => {
   await databaseClient
     .db()
     .collection("members")
-    // .updateOne({ _id: new ObjectId(id) }, updateOptions);
-    .updateOne({ id: id }, updateOptions);
+    .updateOne({ _id: new ObjectId(id) }, updateOptions);
 
   // ส่งข้อความตอบกลับ
   res.status(200).send({
