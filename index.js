@@ -138,14 +138,18 @@ webServer.post("/activityInfoGetData", jwtValidate, async (req, res) => {
 
 webServer.post("/activityInfoChartDonut", jwtValidate, async (req, res) => {
   try {
-    // console.log(req.body.selectedDate);
+    console.log("selectedDate for Donut",req.body.selectedDate);
     const user_id = req.body.user_id;
     let selectedDate = req.body.selectedDate;
     selectedDate = new Date(selectedDate).toLocaleDateString();
     selectedDate = new Date(selectedDate);
     selectedDate.setHours(selectedDate.getHours() + 7);
     // console.log(user_id);
-    const requestedWeek = getISOWeek(selectedDate);
+    let requestedWeek = getISOWeek(selectedDate);
+    if (selectedDate.getDay() === 0) {
+      // console.log("sunday");
+      requestedWeek += 1;
+    } 
     const activityInfo = await databaseClient
       .db()
       .collection("activityInfo")
@@ -159,7 +163,7 @@ webServer.post("/activityInfoChartDonut", jwtValidate, async (req, res) => {
         {
           $match: {
             user_id: user_id,
-            weekOfYear: { $eq: requestedWeek - 1 },
+            weekOfYear: { $eq: requestedWeek - 1},
           },
         },
         {
@@ -187,7 +191,11 @@ webServer.post("/activityInfoChartBar", jwtValidate, async (req, res) => {
     selectedDate = new Date(selectedDate);
     selectedDate.setHours(selectedDate.getHours() + 7);
     // console.log(user_id);
-    const requestedWeek = getISOWeek(selectedDate);
+    let requestedWeek = getISOWeek(selectedDate);
+    if (selectedDate.getDay() === 0) {
+      // console.log("sunday");
+      requestedWeek += 1;
+    } 
     const activityInfoChartBar = await databaseClient
       .db()
       .collection("activityInfo")
